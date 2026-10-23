@@ -209,7 +209,7 @@ elif page == "Market Explorer":
 
             chart_data.index = chart_data.index.astype(str)
 
-                        fig = px.bar(
+            fig = px.bar(
                 chart_data.reset_index(),
                 x="Price band",
                 y="Transactions",
