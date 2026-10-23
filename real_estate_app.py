@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import joblib
 from pathlib import Path
+import plotly.express as px
 
 st.set_page_config(page_title="365 Real Estate | Valuation Studio", page_icon="🏙️", layout="wide", initial_sidebar_state="expanded")
 BASE = Path(__file__).resolve().parent
@@ -155,7 +156,46 @@ elif page == "Market Explorer":
         if {"area_name_en","actual_worth"}.issubset(df.columns):
             n = st.slider("Minimum records per community", 1, 100, 10)
             agg = df.groupby("area_name_en").actual_worth.agg(median_price="median", mean_price="mean", transactions="count").query("transactions >= @n").sort_values("median_price",ascending=False).head(20)
-            st.bar_chart(agg[["median_price"]]); st.dataframe(agg.style.format({"median_price":"AED {:,.0f}","mean_price":"AED {:,.0f}"}), use_container_width=True)
+            chart_data = agg.reset_index()
+
+            fig = px.bar(
+                chart_data,
+                x="area_name_en",
+                y="median_price",
+                title="Top Communities by Median Sale Price",
+                labels={
+                    "area_name_en": "Community",
+                    "median_price": "Median Sale Price (AED)"
+                },
+                color_discrete_sequence=["#77E2CF"],
+                hover_data=["transactions", "mean_price"]
+            )
+
+            fig.update_layout(
+                template="plotly_dark",
+                paper_bgcolor="#0E1B2B",
+                plot_bgcolor="#0E1B2B",
+                font=dict(color="#EDF4FB"),
+                title_font=dict(color="#F5FBFF", size=20),
+                xaxis=dict(showgrid=False, tickangle=-35),
+                yaxis=dict(
+                    showgrid=True,
+                    gridcolor="#294056",
+                    tickprefix="AED ",
+                    tickformat=",.0f"
+                ),
+                margin=dict(b=120)
+            )
+
+            st.plotly_chart(fig, use_container_width=True)
+
+            st.dataframe(
+                agg.style.format({
+                    "median_price": "AED {:,.0f}",
+                    "mean_price": "AED {:,.0f}"
+                }),
+                use_container_width=True
+            )
     with t2:
         if "actual_worth" in df:
             vals = df.actual_worth.dropna(); vals = vals[(vals>0)&(vals<=vals.quantile(.99))]
@@ -169,8 +209,35 @@ elif page == "Market Explorer":
 
             chart_data.index = chart_data.index.astype(str)
 
-            st.bar_chart(chart_data)
-            st.caption("For readability, this view excludes the top 1% of sale prices from the displayed histogram only; the source dataset is unchanged.")
+                        fig = px.bar(
+                chart_data.reset_index(),
+                x="Price band",
+                y="Transactions",
+                title="Distribution of Recorded Sale Prices",
+                labels={
+                    "Price band": "Sale Price Band (AED)",
+                    "Transactions": "Number of Transactions"
+                },
+                color_discrete_sequence=["#77E2CF"]
+            )
+
+            fig.update_layout(
+                template="plotly_dark",
+                paper_bgcolor="#0E1B2B",
+                plot_bgcolor="#0E1B2B",
+                font=dict(color="#EDF4FB"),
+                title_font=dict(color="#F5FBFF", size=20),
+                xaxis=dict(showgrid=False, tickangle=-45),
+                yaxis=dict(showgrid=True, gridcolor="#294056"),
+                margin=dict(b=140)
+            )
+
+            st.plotly_chart(fig, use_container_width=True)
+
+            st.caption(
+                "For readability, this view excludes the top 1% of sale prices "
+                "from the displayed histogram only; the source dataset is unchanged."
+            )
     with t3:
         community_filter = st.selectbox("Filter community", ["All communities"]+options("area_name_en"))
         view = df if community_filter=="All communities" else df[df.area_name_en.astype(str).eq(community_filter)]
